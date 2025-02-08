@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}Attendance - {{ course.name }}{% endblock %}
+
+{% block content %}
+<div class="card shadow">
+    <div class="card-header bg-primary text-white">
+        <h2 class="mb-0">Attendance - {{ course.name }}</h2>
+    </div>
+    <div class="card-body">
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="input-group">
+                    <span class="input-group-text">Date</span>
+                    <input type="date" class="form-control" id="attendanceDate" 
+                           value="{{ attendance_date|date:'Y-m-d' }}">
+                    <button class="btn btn-primary" id="loadAttendance">
+                        <i class="bx bx-refresh"></i> Load
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-6 text-end">
+                <button class="btn btn-success" id="saveAllAttendance">
+                    <i class="bx bxs-save"></i> Save All Changes
+                </button>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Student ID</th>
+                        <th>Name</th>
+                        <th>Total Classes</th>
+                        <th>Present</th>
+                        <th>Attendance %</th>
+                        <th>Mark Attendance</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for student in students %}
+                    <tr>
+                        <td>{{ student.student_id }}</td>
+                        <td>{{ student.user.get_full_name }}</td>
+                        <td>{{ attendance_stats|get_item:student.id|get_item:'total_classes' }}</td>
+                        <td>{{ attendance_stats|get_item:student.id|get_item:'present_classes' }}</td>
+                        <td>
+                            <div class="progress">
+                                <div class="progress-bar" role="progressbar" 
+                                     style="width: {{ attendance_stats|get_item:student.id|get_item:'attendance_percentage' }}%">
+                                    {{ attendance_stats|get_item:student.id|get_item:'attendance_percentage' }}%
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input attendance-toggle" type="checkbox"
+                                       data-student-id="{{ student.id }}"
+                                       {% if attendance_records|get_item:student.id %}checked{% endif %}>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const attendanceDate = document.getElementById('attendanceDate');
+    const loadButton = document.getElementById('loadAttendance');
+    const saveAllButton = document.getElementById('saveAllAttendance');
+    const attendanceToggles = document.querySelectorAll('.attendance-toggle');
+
+    // Load attendance for selected date
+    loadButton.addEventListener('click', function() {
+        window.location.href = `?date=${attendanceDate.value}`;
+    });
+
+    // Handle individual attendance toggles
+    attendanceToggles.forEach(toggle => {
+        toggle.addEventListener('change', function() {
+            markAttendance(this.dataset.studentId, this.checked);
+        });
+    });
+
+    // Save all attendance changes
+    saveAllButton.addEventListener('click', function() {
+        const attendanceData = [];
+        attendanceToggles.forEach(toggle => {
+            attendanceData.push({
+                student_id: toggle.dataset.studentId,
+                is_present: toggle.checked
+            });
+        });
+
+        saveAllAttendance(attendanceData);
+    });
+
+    // Function to mark individual attendance
+    function markAttendance(studentId, isPresent) {
+        fetch('{% url "mark_attendance" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                student_id: studentId,
+                course_id: '{{ course.id }}',
+                date: attendanceDate.value,
+                is_present: isPresent
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+                // Revert the toggle if there was an error
+                toggle.checked = !toggle.checked;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error marking attendance');
+            toggle.checked = !toggle.checked;
+        });
+    }
+
+    // Function to save all attendance changes
+    function saveAllAttendance(attendanceData) {
+        fetch('{% url "mark_attendance_bulk" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                course_id: '{{ course.id }}',
+                date: attendanceDate.value,
+                attendance_data: attendanceData
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+            } else {
+                alert('Attendance saved successfully!');
+                window.location.reload();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error saving attendance');
+        });
+    }
+});
+</script>
+{% endblock %}

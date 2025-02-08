@@ -1,0 +1,360 @@
+{% extends "base.html" %}
+
+{% block title %}{{ course.name }} - Course Details{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-primary text-white">
+                <h2 class="mb-0">{{ course.name }}</h2>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h5>Course Details</h5>
+                        <ul class="list-unstyled">
+                            <li><strong>Course Code:</strong> {{ course.code }}</li>
+                            <li><strong>Department:</strong> {{ course.department }}</li>
+                            <li><strong>Credits:</strong> {{ course.credits }}</li>
+                            <li><strong>Students Enrolled:</strong> {{ enrollment_count }}</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Course Statistics</h5>
+                        <ul class="list-unstyled">
+                            <li><strong>Materials:</strong> {{ materials_count }}</li>
+                            <li><strong>Assignments:</strong> {{ assignments_count }}</li>
+                        </ul>
+                    </div>
+                </div>
+
+                {% if course.description %}
+                    <h5>Description</h5>
+                    <p>{{ course.description }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="card shadow">
+            <div class="card-header bg-light">
+                <ul class="nav nav-tabs card-header-tabs" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" data-bs-toggle="tab" href="#materials">
+                            <i class="bx bxs-book"></i> Materials
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#assignments">
+                            <i class="bx bxs-task"></i> Assignments
+                        </a>
+                    </li>
+                    {% if user.faculty or user.is_staff %}
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#students">
+                            <i class="bx bxs-user"></i> Students
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+            <div class="card-body">
+                <div class="tab-content">
+                    <!-- Materials Tab -->
+                    <div class="tab-pane fade show active" id="materials">
+                        {% if materials %}
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Title</th>
+                                            <th>Uploaded By</th>
+                                            <th>Date</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for material in materials %}
+                                        <tr>
+                                            <td>{{ material.title }}</td>
+                                            <td>{{ material.uploaded_by.user.get_full_name }}</td>
+                                            <td>{{ material.upload_date|date:"M d, Y" }}</td>
+                                            <td>
+                                                <a href="{{ material.file.url }}" class="btn btn-sm btn-primary">
+                                                    <i class="bx bxs-download"></i> Download
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <p class="text-muted">No materials available.</p>
+                        {% endif %}
+
+                        {% if user.faculty %}
+                        <button class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#uploadMaterialModal">
+                            <i class="bx bxs-upload"></i> Upload Material
+                        </button>
+                        {% endif %}
+                    </div>
+
+                    <!-- Assignments Tab -->
+                    <div class="tab-pane fade" id="assignments">
+                        {% if assignments %}
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Title</th>
+                                            <th>Due Date</th>
+                                            <th>Total Marks</th>
+                                            <th>Status</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for assignment in assignments %}
+                                        <tr>
+                                            <td>{{ assignment.title }}</td>
+                                            <td>{{ assignment.due_date|date:"M d, Y H:i" }}</td>
+                                            <td>{{ assignment.total_marks }}</td>
+                                            <td>
+                                                {% if assignment.is_past_due %}
+                                                    <span class="badge bg-danger">Past Due</span>
+                                                {% else %}
+                                                    <span class="badge bg-success">Active</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <a href="{% url 'assignment_detail' assignment.id %}" 
+                                                   class="btn btn-sm btn-info">
+                                                    <i class="bx bxs-detail"></i> View
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <p class="text-muted">No assignments available.</p>
+                        {% endif %}
+
+                        {% if user.faculty %}
+                        <button class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#createAssignmentModal">
+                            <i class="bx bxs-plus-circle"></i> Create Assignment
+                        </button>
+                        {% endif %}
+                    </div>
+
+                    <!-- Students Tab -->
+                    {% if user.faculty or user.is_staff %}
+                    <div class="tab-pane fade" id="students">
+                        {% if enrollments %}
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Student ID</th>
+                                            <th>Name</th>
+                                            <th>Enrollment Date</th>
+                                            <th>Attendance</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for enrollment in enrollments %}
+                                        <tr>
+                                            <td>{{ enrollment.student.student_id }}</td>
+                                            <td>{{ enrollment.student.user.get_full_name }}</td>
+                                            <td>{{ enrollment.enrollment_date|date:"M d, Y" }}</td>
+                                            <td>
+                                                <div class="progress" style="height: 20px;">
+                                                    <div class="progress-bar" role="progressbar" 
+                                                         style="width: {{ enrollment.attendance_percentage }}%">
+                                                        {{ enrollment.attendance_percentage }}%
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <a href="{% url 'student_detail' enrollment.student.id %}" 
+                                                   class="btn btn-sm btn-info">
+                                                    <i class="bx bxs-user-detail"></i> View Details
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <p class="text-muted">No students enrolled in this course.</p>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        {% if user.student %}
+            <!-- Enrollment Status -->
+            <div class="card shadow mb-4">
+                <div class="card-header bg-info text-white">
+                    <h4 class="mb-0">Your Status</h4>
+                </div>
+                <div class="card-body">
+                    {% if enrollment %}
+                        <p><strong>Enrolled Since:</strong> {{ enrollment.enrollment_date|date:"M d, Y" }}</p>
+                        <p><strong>Attendance:</strong> {{ attendance_percentage }}%</p>
+                        <p><strong>Grade:</strong> {{ enrollment.grade|default:"Not graded" }}</p>
+                        
+                        <form method="post" action="{% url 'drop_course' course.id %}" 
+                              onsubmit="return confirm('Are you sure you want to drop this course?');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bx bxs-minus-circle"></i> Drop Course
+                            </button>
+                        </form>
+                    {% else %}
+                        <p class="text-muted">You are not enrolled in this course.</p>
+                        <form method="post" action="{% url 'enroll_course' course.id %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-success">
+                                <i class="bx bxs-plus-circle"></i> Enroll Now
+                            </button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Course Statistics -->
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">Course Progress</h4>
+            </div>
+            <div class="card-body">
+                <canvas id="courseStats"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if user.faculty %}
+<!-- Upload Material Modal -->
+<div class="modal fade" id="uploadMaterialModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Upload Course Material</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" enctype="multipart/form-data" action="{% url 'course_materials' course.id %}">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Title</label>
+                        <input type="text" class="form-control" id="title" name="title" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="file" class="form-label">File</label>
+                        <input type="file" class="form-control" id="file" name="file" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Upload</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Create Assignment Modal -->
+<div class="modal fade" id="createAssignmentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create Assignment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" enctype="multipart/form-data" action="{% url 'course_assignments' course.id %}">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Title</label>
+                        <input type="text" class="form-control" id="title" name="title" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="3" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="due_date" class="form-label">Due Date</label>
+                        <input type="datetime-local" class="form-control" id="due_date" name="due_date" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="total_marks" class="form-label">Total Marks</label>
+                        <input type="number" class="form-control" id="total_marks" name="total_marks" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="file" class="form-label">Assignment File (Optional)</label>
+                        <input type="file" class="form-control" id="file" name="file">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Course statistics chart
+    const ctx = document.getElementById('courseStats').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Materials', 'Assignments', 'Students'],
+            datasets: [{
+                label: 'Course Statistics',
+                data: [{{ materials_count }}, {{ assignments_count }}, {{ enrollment_count }}],
+                backgroundColor: [
+                    'rgba(54, 162, 235, 0.2)',
+                    'rgba(255, 99, 132, 0.2)',
+                    'rgba(75, 192, 192, 0.2)'
+                ],
+                borderColor: [
+                    'rgba(54, 162, 235, 1)',
+                    'rgba(255, 99, 132, 1)',
+                    'rgba(75, 192, 192, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            },
+            responsive: true
+        }
+    });
+</script>
+{% endblock %}

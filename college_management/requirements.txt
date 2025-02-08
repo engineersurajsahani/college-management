@@ -1,0 +1,5 @@
+Django
+python-dotenv
+Pillow
+django-crispy-forms
+crispy-bootstrap4
