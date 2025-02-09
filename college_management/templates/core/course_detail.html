@@ -161,7 +161,7 @@
                                             <th>Name</th>
                                             <th>Enrollment Date</th>
                                             <th>Attendance</th>
-                                            <th>Action</th>
+                                            {% comment %} <th>Action</th> {% endcomment %}
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -178,12 +178,12 @@
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td>
+                                            {% comment %} <td>
                                                 <a href="{% url 'student_detail' enrollment.student.id %}" 
                                                    class="btn btn-sm btn-info">
                                                     <i class="bx bxs-user-detail"></i> View Details
                                                 </a>
-                                            </td>
+                                            </td> {% endcomment %}
                                         </tr>
                                         {% endfor %}
                                     </tbody>

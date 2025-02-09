@@ -1,0 +1,332 @@
+{% extends "base.html" %}
+
+{% block title %}{{ exam.title }} - Exam Details{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-primary text-white">
+                <h2 class="mb-0">{{ exam.title }}</h2>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h5>Exam Details</h5>
+                        <ul class="list-unstyled">
+                            <li><strong>Course:</strong> {{ exam.course.name }}</li>
+                            <li><strong>Type:</strong> {{ exam.get_exam_type_display }}</li>
+                            <li><strong>Date:</strong> {{ exam.date|date:"M d, Y H:i" }}</li>
+                            <li><strong>Duration:</strong> {{ exam.duration }}</li>
+                            <li><strong>Total Marks:</strong> {{ exam.total_marks }}</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Status</h5>
+                        <ul class="list-unstyled">
+                            <li>
+                                <strong>Time Status:</strong>
+                                {% if exam.date > now %}
+                                    <span class="badge bg-info">Upcoming</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Past</span>
+                                {% endif %}
+                            </li>
+                            {% if user.faculty %}
+                                <li><strong>Results Published:</strong> {{ results|length }}</li>
+                                <li><strong>Pending Results:</strong> {{ pending_students|length }}</li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                </div>
+
+                {% if exam.instructions %}
+                    <h5>Instructions</h5>
+                    <div class="alert alert-info">
+                        {{ exam.instructions }}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if user.faculty %}
+        <div class="card shadow">
+            <div class="card-header bg-info text-white">
+                <h4 class="mb-0">Student Results</h4>
+            </div>
+            <div class="card-body">
+                {% if results %}
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Student ID</th>
+                                    <th>Name</th>
+                                    <th>Marks</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for result in results %}
+                                    <tr>
+                                        <td>{{ result.student.student_id }}</td>
+                                        <td>{{ result.student.user.get_full_name }}</td>
+                                        <td>{{ result.marks_obtained }}/{{ exam.total_marks }}</td>
+                                        <td>
+                                            {% if result.marks_obtained >= exam.total_marks|multiply:0.4 %}
+                                                <span class="badge bg-success">Pass</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">Fail</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-sm btn-warning" 
+                                                    data-bs-toggle="modal" 
+                                                    data-bs-target="#editResultModal"
+                                                    data-result-id="{{ result.id }}"
+                                                    data-marks="{{ result.marks_obtained }}"
+                                                    data-remarks="{{ result.remarks }}">
+                                                <i class="bx bxs-edit"></i> Edit
+                                            </button>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {% if pending_students %}
+                        <h5 class="mt-4">Pending Results</h5>
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Student ID</th>
+                                        <th>Name</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for student in pending_students %}
+                                        <tr>
+                                            <td>{{ student.student_id }}</td>
+                                            <td>{{ student.user.get_full_name }}</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-primary" 
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#addResultModal"
+                                                        data-student-id="{{ student.id }}"
+                                                        data-student-name="{{ student.user.get_full_name }}">
+                                                    <i class="bx bxs-plus-circle"></i> Add Result
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <p class="text-muted">No results published yet.</p>
+                    {% if pending_students %}
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#bulkResultModal">
+                            <i class="bx bxs-plus-circle"></i> Add Results
+                        </button>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if user.student %}
+            {% if result %}
+                <div class="card shadow mt-4">
+                    <div class="card-header bg-info text-white">
+                        <h4 class="mb-0">Your Result</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5>Marks Obtained</h5>
+                                <h2>{{ result.marks_obtained }}/{{ exam.total_marks }}</h2>
+                                <div class="progress mt-2">
+                                    <div class="progress-bar" role="progressbar" 
+                                         style="width: {{ result.marks_obtained|divide:exam.total_marks|multiply:100 }}%">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h5>Status</h5>
+                                {% if result.marks_obtained >= exam.total_marks|multiply:0.4 %}
+                                    <span class="badge bg-success">Pass</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Fail</span>
+                                {% endif %}
+                                {% if result.remarks %}
+                                    <h5 class="mt-3">Remarks</h5>
+                                    <p>{{ result.remarks }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="alert alert-info mt-4">
+                    <i class="bx bx-info-circle"></i> Results have not been published yet.
+                </div>
+            {% endif %}
+        {% endif %}
+    </div>
+
+    <div class="col-md-4">
+        {% if user.faculty %}
+            <div class="card shadow mb-4">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">Results Analysis</h4>
+                </div>
+                <div class="card-body">
+                    <canvas id="resultStats"></canvas>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% if user.faculty %}
+<!-- Add Result Modal -->
+<div class="modal fade" id="addResultModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Result</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <input type="hidden" name="student_id" id="add_student_id">
+                    <div class="mb-3">
+                        <label class="form-label">Student</label>
+                        <input type="text" class="form-control" id="add_student_name" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label for="marks" class="form-label">Marks (out of {{ exam.total_marks }})</label>
+                        <input type="number" class="form-control" id="marks" name="marks" 
+                               min="0" max="{{ exam.total_marks }}" step="0.5" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="remarks" class="form-label">Remarks</label>
+                        <textarea class="form-control" id="remarks" name="remarks" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Save Result</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Result Modal -->
+<div class="modal fade" id="editResultModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Result</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post">
+                <div class="modal-body">
+                    {% csrf_token %}
+                    <input type="hidden" name="result_id" id="edit_result_id">
+                    <div class="mb-3">
+                        <label for="edit_marks" class="form-label">Marks (out of {{ exam.total_marks }})</label>
+                        <input type="number" class="form-control" id="edit_marks" name="marks" 
+                               min="0" max="{{ exam.total_marks }}" step="0.5" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_remarks" class="form-label">Remarks</label>
+                        <textarea class="form-control" id="edit_remarks" name="remarks" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">Update Result</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_js %}
+{% if user.faculty %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Initialize results chart
+    const ctx = document.getElementById('resultStats').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['90-100', '80-89', '70-79', '60-69', '50-59', 'Below 50'],
+            datasets: [{
+                label: 'Number of Students',
+                data: {{ result_stats|safe }},
+                backgroundColor: [
+                    'rgba(75, 192, 192, 0.2)',
+                    'rgba(54, 162, 235, 0.2)',
+                    'rgba(255, 206, 86, 0.2)',
+                    'rgba(255, 159, 64, 0.2)',
+                    'rgba(153, 102, 255, 0.2)',
+                    'rgba(255, 99, 132, 0.2)'
+                ],
+                borderColor: [
+                    'rgba(75, 192, 192, 1)',
+                    'rgba(54, 162, 235, 1)',
+                    'rgba(255, 206, 86, 1)',
+                    'rgba(255, 159, 64, 1)',
+                    'rgba(153, 102, 255, 1)',
+                    'rgba(255, 99, 132, 1)'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+
+    // Modal handlers
+    document.querySelectorAll('.edit-result').forEach(button => {
+        button.addEventListener('click', function() {
+            document.getElementById('edit_result_id').value = this.dataset.resultId;
+            document.getElementById('edit_marks').value = this.dataset.marks;
+            document.getElementById('edit_remarks').value = this.dataset.remarks;
+        });
+    });
+
+    document.querySelectorAll('.add-result').forEach(button => {
+        button.addEventListener('click', function() {
+            document.getElementById('add_student_id').value = this.dataset.studentId;
+            document.getElementById('add_student_name').value = this.dataset.studentName;
+        });
+    });
+</script>
+{% endif %}
+{% endblock %}

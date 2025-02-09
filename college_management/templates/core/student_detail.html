@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block title %}{{ student.user.get_full_name }} - Student Details{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Student Information -->
+    <div class="col-md-4">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-primary text-white">
+                <h3 class="mb-0">Student Profile</h3>
+            </div>
+            <div class="card-body text-center">
+                {% if student.profile_picture %}
+                    <img src="{{ student.profile_picture.url }}" 
+                         class="rounded-circle img-thumbnail mb-3"
+                         style="width: 150px; height: 150px; object-fit: cover;">
+                {% else %}
+                    <img src="{% static 'images/default-profile.png' %}" 
+                         class="rounded-circle img-thumbnail mb-3"
+                         style="width: 150px; height: 150px; object-fit: cover;">
+                {% endif %}
+                
+                <h4>{{ student.user.get_full_name }}</h4>
+                <p class="text-muted mb-3">{{ student.student_id }}</p>
+                
+                <div class="text-start">
+                    <ul class="list-unstyled">
+                        <li class="mb-2">
+                            <i class="bx bxs-envelope me-2"></i>
+                            {{ student.user.email }}
+                        </li>
+                        <li class="mb-2">
+                            <i class="bx bxs-phone me-2"></i>
+                            {{ student.phone }}
+                        </li>
+                        <li class="mb-2">
+                            <i class="bx bxs-graduation me-2"></i>
+                            {{ student.department }}
+                        </li>
+                        <li class="mb-2">
+                            <i class="bx bxs-map me-2"></i>
+                            {{ student.address }}
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Overall Statistics -->
+        <div class="card shadow">
+            <div class="card-header bg-info text-white">
+                <h4 class="mb-0">Academic Overview</h4>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Enrolled Courses
+                        <span class="badge bg-primary rounded-pill">{{ enrollments|length }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Average Attendance
+                        <span class="badge bg-info rounded-pill">
+                            {{ attendance_stats.overall_percentage|floatformat:1 }}%
+                        </span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        GPA
+                        <span class="badge bg-success rounded-pill">
+                            {{ gpa|default:"N/A" }}
+                        </span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Academic Information -->
+    <div class="col-md-8">
+        <!-- Current Courses -->
+        <div class="card shadow mb-4">
+            <div class="card-header bg-success text-white">
+                <h4 class="mb-0">Current Courses</h4>
+            </div>
+            <div class="card-body">
+                {% if enrollments %}
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Course</th>
+                                    <th>Credits</th>
+                                    <th>Attendance</th>
+                                    <th>Grade</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for enrollment in enrollments %}
+                                    <tr>
+                                        <td>{{ enrollment.course.name }}</td>
+                                        <td>{{ enrollment.course.credits }}</td>
+                                        <td>
+                                            {% with stats=attendance_stats|get_item:enrollment.course.id %}
+                                                <div class="progress" style="height: 20px;">
+                                                    <div class="progress-bar" role="progressbar" 
+                                                         style="width: {{ stats.attendance_percentage }}%">
+                                                        {{ stats.attendance_percentage }}%
+                                                    </div>
+                                                </div>
+                                                <small class="text-muted">
+                                                    {{ stats.present_classes }}/{{ stats.total_classes }} classes
+                                                </small>
+                                            {% endwith %}
+                                        </td>
+                                        <td>{{ enrollment.grade|default:"N/A" }}</td>
+                                        <td>
+                                            <a href="{% url 'course_detail' enrollment.course.id %}" 
+                                               class="btn btn-sm btn-info">
+                                                <i class="bx bxs-detail"></i> Details
+                                            </a>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">No courses enrolled.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Assignment Submissions -->
+        <div class="card shadow mb-4">
+            <div class="card-header bg-warning">
+                <h4 class="mb-0">Recent Assignments</h4>
+            </div>
+            <div class="card-body">
+                {% if submissions %}
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Assignment</th>
+                                    <th>Course</th>
+                                    <th>Submitted</th>
+                                    <th>Status</th>
+                                    <th>Marks</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for submission in submissions %}
+                                    <tr>
+                                        <td>{{ submission.assignment.title }}</td>
+                                        <td>{{ submission.assignment.course.name }}</td>
+                                        <td>{{ submission.submitted_at|date:"M d, Y" }}</td>
+                                        <td>
+                                            {% if submission.submitted_at > submission.assignment.due_date %}
+                                                <span class="badge bg-warning">Late</span>
+                                            {% else %}
+                                                <span class="badge bg-success">On Time</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if submission.marks_obtained %}
+                                                {{ submission.marks_obtained }}/{{ submission.assignment.total_marks }}
+                                            {% else %}
+                                                <span class="text-muted">Not Graded</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">No assignment submissions yet.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Exam Results -->
+        <div class="card shadow">
+            <div class="card-header bg-danger text-white">
+                <h4 class="mb-0">Exam Results</h4>
+            </div>
+            <div class="card-body">
+                {% if exam_results %}
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Exam</th>
+                                    <th>Course</th>
+                                    <th>Date</th>
+                                    <th>Marks</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for result in exam_results %}
+                                    <tr>
+                                        <td>{{ result.exam.title }}</td>
+                                        <td>{{ result.exam.course.name }}</td>
+                                        <td>{{ result.exam.date|date:"M d, Y" }}</td>
+                                        <td>{{ result.marks_obtained }}/{{ result.exam.total_marks }}</td>
+                                        <td>
+                                            {% if result.marks_obtained >= result.exam.total_marks|multiply:0.4 %}
+                                                <span class="badge bg-success">Pass</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">Fail</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">No exam results available.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Initialize charts for attendance and grades if needed
+    // Add any additional JavaScript functionality here
+</script>
+{% endblock %}

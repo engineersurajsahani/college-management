@@ -78,10 +78,10 @@
                                                class="btn btn-sm btn-info">
                                                 <i class="bx bxs-detail"></i> Details
                                             </a>
-                                            <a href="{% url 'course_attendance' course.id %}" 
+                                            {% comment %} <a href="{% url 'course_attendance' course.id %}" 
                                                class="btn btn-sm btn-primary">
                                                 <i class="bx bxs-calendar"></i> Attendance
-                                            </a>
+                                            </a> {% endcomment %}
                                         </td>
                                     </tr>
                                     {% endfor %}
